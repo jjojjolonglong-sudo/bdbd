@@ -53,9 +53,14 @@ main{max-width:560px;margin:0 auto;padding:12px 16px calc(var(--nav) + 28px + en
 
 /* 오늘 */
 .dnav{display:grid;grid-template-columns:36px 1fr 36px;gap:6px}.dnav button{padding:0;height:36px}.dnav input{text-align:center}
-.sum{padding:16px 0 12px;border-bottom:1px solid var(--ln)}
-.big{display:flex;align-items:baseline;gap:6px;color:var(--ok)}.big b{font-size:42px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}.big.no{color:var(--no)}
+.sum{padding:16px 0 0;border-bottom:1px solid var(--ln)}
+.big{display:flex;align-items:baseline;gap:6px;white-space:nowrap;color:var(--ok)}.big b{font-size:42px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}.big.no{color:var(--no)}
 .bar{height:4px;background:var(--ln);margin:10px 0 8px}.bar i{display:block;height:100%;background:var(--ok)}.big.no+.bar i{background:var(--no)}
+.st3{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ln);margin-top:10px}
+.st3>div{padding:8px 0 6px 12px;border-left:1px solid var(--ln)}.st3>div:first-child{padding-left:0;border-left:0}
+.st3 span{display:block;font-size:11.5px;color:var(--mut)}.st3 b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
+.st3.sm{margin-top:0}.st3.sm b{font-size:16px}.st3 small{font-size:12px;font-weight:400;color:var(--mut);margin-left:1px}
+.ed{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0}
 .chip{padding:5px 10px;font-size:13px}.chip small{color:var(--mut);margin-left:4px;font-size:11.5px}
 .chip.ex{border-style:dashed}
@@ -243,13 +248,20 @@ const MET=[['걷기(보통)',3.5],['빠르게 걷기',4.5],['조깅',7],['달리
 const MEALS=['아침','점심','저녁'],mealOf=e=>Math.min(2,+e.meal||0);
 /* 지금 시각(한국)으로 끼니 고르기: 11시 전 아침, 17시 전 점심, 그 뒤 저녁 */
 const slotNow=()=>{const h=new Date(Date.now()+324e5).getUTCHours();return h<11?0:h<17?1:2};
-const S={tab:'t',date:TODAY,ym:TODAY.slice(0,7),mt:'w'};
+const S={tab:'t',date:TODAY,bdd:TODAY,ym:TODAY.slice(0,7),mt:'w',ge:-1};
 let TT=null;const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(TT);TT=setTimeout(()=>t.classList.remove('on'),1600)};
-const lastW=()=>{const b=st.get('bd',[]).filter(e=>e.w).slice(-1)[0],P=st.get('pf',null);return b?+b.w:(P?+P.w:60)};
-function plan(){const p=st.get('pf',null);if(!p||!p.h||!p.w||!p.age||!p.tw||!p.start||!p.end)return null;
- const bmr=10*p.w+6.25*p.h-5*p.age+(p.sex=='m'?5:-161),tdee=bmr*(+p.act||1.2),days=Math.max(1,Math.round((new Date(p.end)-new Date(p.start))/864e5)),def=(p.w-p.tw)*7700/days,raw=tdee-def;
- return{bmr:r(bmr),tdee:r(tdee),days,def:r(def),budget:r(Math.max(raw,bmr)),warn:raw<bmr,tw:+p.tw,diff:o1(p.w-p.tw)}}
-const stat=(d,P)=>{if(!P)return null;const v=day(d);if(!v.m.length)return null;return sum(v.m,'k')-sum(v.x,'k')<=P.budget?'ok':'no'};
+/* 내 정보(pf): {sex, birth, h, act, goals:[{start,end,w,tw}]}. 예전 형식(age·w·tw·start·end 하나)도 읽어요 */
+function prof(){const p=st.get('pf',null);if(!p)return null;const o={...p};if(!Array.isArray(o.goals))o.goals=o.start&&o.end?[{start:o.start,end:o.end,w:o.w,tw:o.tw}]:[];o.goals=o.goals.slice().sort((a,b)=>a.start<b.start?-1:1);return o}
+/* 그날의 만 나이(생일 기준). 생일이 없으면 예전에 적은 나이 */
+function ageAt(p,d){if(p.birth){const[by,bm,bd]=p.birth.split('-').map(Number),[y,m,dd]=d.split('-').map(Number);return y-by-((m<bm||(m==bm&&dd<bd))?1:0)}return p.age?+p.age:null}
+const goalAt=(p,d)=>p.goals.slice().reverse().find(g=>g.start<=d&&d<=g.end)||null;
+/* 그날까지 마지막으로 잰 체중 → 없으면 그 기간 시작 체중 */
+function lastW(d=TODAY){const b=st.get('bd',[]).filter(e=>e.w&&e.d<=d).slice(-1)[0];if(b)return +b.w;const p=prof();if(p){const g=goalAt(p,d)||p.goals.filter(g=>g.start<=d).slice(-1)[0]||p.goals[0];if(g&&g.w)return +g.w;if(p.w)return +p.w}return 60}
+/* 그날의 기준 칼로리: 기초대사량·하루 소비는 그날 나이·체중으로, 적자는 그 기간 계획(시작→목표 체중, 기간 일수)으로 */
+function plan(d=TODAY){const p=prof();if(!p||!p.h)return null;const age=ageAt(p,d),g=goalAt(p,d);if(age==null||!g||!g.w||!g.tw)return null;
+ const w=lastW(d),bmr=10*w+6.25*p.h-5*age+(p.sex=='m'?5:-161),tdee=bmr*(+p.act||1.2),days=Math.max(1,Math.round((new Date(g.end)-new Date(g.start))/864e5)),def=(g.w-g.tw)*7700/days,raw=tdee-def;
+ return{bmr:r(bmr),tdee:r(tdee),days,def:r(def),budget:r(Math.max(raw,bmr)),warn:raw<bmr,tw:+g.tw,diff:o1(g.w-g.tw),age,w,g,n:p.goals.indexOf(g)+1}}
+const stat=d=>{const P=plan(d);if(!P)return null;const v=day(d);if(!v.m.length)return null;return sum(v.m,'k')-sum(v.x,'k')<=P.budget?'ok':'no'};
 
 /* 최근·자주 먹은 메뉴(최근 60일): 최근 것 6개 + 그 밖에 자주 먹은 것 6개, 운동은 최근 3개 */
 let QF=[],QX=[];
@@ -259,50 +271,54 @@ function quick(){const from=addD(TODAY,-60),F=new Map(),X=new Map();
  const f=[...F.values()],rec=f.slice().sort((a,b)=>b.t-a.t).slice(0,6),fr=f.filter(o=>!rec.includes(o)).sort((a,b)=>b.c-a.c||b.t-a.t).slice(0,6);
  QF=[...rec,...fr].map(o=>o.e);QX=[...X.values()].sort((a,b)=>b.t-a.t).slice(0,3).map(o=>o.e)}
 
-function vToday(){const P=plan(),d=day(S.date),i=sum(d.m,'k'),x=sum(d.x,'k'),net=i-x;let h=`<div class="dnav"><button data-a="dd" data-v="-1" aria-label="전날">‹</button><input type="date" value="${S.date}" data-i="sd"><button data-a="dd" data-v="1" aria-label="다음날">›</button></div><section class="sum">`;
- if(P){const left=P.budget-net,pc=Math.max(0,Math.min(100,net/P.budget*100));h+=`<div class="big ${left<0?'no':''}"><b>${Math.abs(r(left))}</b><span>kcal ${left<0?'초과':'남음'}</span></div><div class="bar"><i style="width:${pc}%"></i></div><p class="mut">섭취 ${r(i)} − 운동 ${r(x)} = ${r(net)} / 기준 ${P.budget} kcal</p>`}
- else h+=`<p style="margin:0 0 4px"><b>설정</b>에서 내 정보와 목표를 넣으면 하루 기준 칼로리가 나와요.</p><p class="mut">섭취 ${r(i)} − 운동 ${r(x)} = ${r(net)} kcal</p>`;
- h+=`<p class="mut">탄수화물 ${r(sum(d.m,'c'))}g · 단백질 ${r(sum(d.m,'p'))}g · 지방 ${r(sum(d.m,'f'))}g</p></section>`;
- quick();
- h+=`<div class="chips">${QF.map((e,k)=>`<button class="chip" data-a="qa" data-v="${k}">${E(e.n)}<small>${E(e.amt)}</small></button>`).join('')}${QX.map((e,k)=>`<button class="chip ex" data-a="qx" data-v="${k}">${E(e.n)}<small>${e.min?e.min+'분':r(e.k)+'kcal'}</small></button>`).join('')}${QF.length+QX.length?'':'<span class="mut">기록하면 최근·자주 먹은 메뉴가 여기 떠요. 누르면 바로 들어가요.</span>'}</div>`;
- h+=`<button class="pri wide" data-a="add">+ 추가 <span style="font-weight:400;opacity:.7">· ${MEALS[slotNow()]}</span></button>`;
+function vToday(){const P=plan(S.date),p=prof(),d=day(S.date),i=sum(d.m,'k'),x=sum(d.x,'k'),net=i-x;let h=`<div class="dnav"><button data-a="dd" data-v="-1" aria-label="전날">‹</button><input type="date" value="${S.date}" data-i="sd"><button data-a="dd" data-v="1" aria-label="다음날">›</button></div><section class="sum">`;
+ if(P){const left=P.budget-net,pc=Math.max(0,Math.min(100,net/P.budget*100));h+=`<div class="big ${left<0?'no':''}"><b>${Math.abs(r(left))}</b><span>kcal ${left<0?'초과':'남음'}</span><span class="mut" style="margin-left:auto">${P.n}차 · 기준 ${P.budget}</span></div><div class="bar"><i style="width:${pc}%"></i></div>`}
+ else h+=`<p style="margin:0 0 6px">${!p||!p.h||(!p.birth&&!p.age)?'<b>설정</b>에서 내 정보와 다이어트 기간을 넣으면 하루 기준 칼로리가 나와요.':'이 날은 다이어트 기간이 아니에요. <span class="mut">(설정에서 기간 추가)</span>'}</p>`;
+ h+=`<div class="st3"><div><span>섭취</span><b>${r(i)}</b></div><div><span>운동</span><b>${x?'−':''}${r(x)}</b></div><div><span>합계</span><b>${r(net)}</b></div></div><div class="st3 sm"><div><span>탄수화물</span><b>${r(sum(d.m,'c'))}<small>g</small></b></div><div><span>단백질</span><b>${r(sum(d.m,'p'))}<small>g</small></b></div><div><span>지방</span><b>${r(sum(d.m,'f'))}<small>g</small></b></div></div></section>`;
  const b=st.get('bd',[]).find(e=>e.d==S.date)||{};
  h+=`<div class="qb"><div><label for="qw">체중(kg)</label><input type="number" step="0.1" inputmode="decimal" id="qw" value="${E(b.w||'')}"></div><div><label for="qf">체지방률(%)</label><input type="number" step="0.1" inputmode="decimal" id="qf" value="${E(b.f||'')}"></div><div><label for="qm">골격근량(kg)</label><input type="number" step="0.1" inputmode="decimal" id="qm" value="${E(b.m||'')}"></div><button data-a="qbs">기록</button></div>`;
- MEALS.forEach((n,mi)=>{const L=d.m.filter(e=>mealOf(e)==mi);h+=`<div class="sec"><div class="sh"><h2>${n}</h2><span class="mut">${r(sum(L,'k'))} kcal</span></div>`+(L.length?L.map(e=>`<div class="it"><div class="nm">${E(e.n)}<small>${E(e.amt)} · 탄 ${e.c} 단 ${e.p} 지 ${e.f}</small></div><b>${r(e.k)}</b><span class="row" style="gap:0"><button class="ic" data-a="mv" data-v="${e.id}" data-d="-1" ${mi==0?'disabled':''} aria-label="위 끼니로">↑</button><button class="ic" data-a="mv" data-v="${e.id}" data-d="1" ${mi==2?'disabled':''} aria-label="아래 끼니로">↓</button><button class="ic x" data-a="del" data-t="m" data-v="${e.id}" aria-label="삭제">×</button></span></div>`).join(''):'<p class="emp">기록 없음</p>')+'</div>'});
- h+=`<div class="sec"><div class="sh"><h2>운동</h2><span class="mut">−${r(x)} kcal</span></div>`+(d.x.length?d.x.map(e=>`<div class="it"><div class="nm">${E(e.n)}<small>${e.min?e.min+'분':'직접 입력'}</small></div><b>${r(e.k)}</b><button class="ic x" data-a="del" data-t="x" data-v="${e.id}" aria-label="삭제">×</button></div>`).join(''):'<p class="emp">기록 없음</p>')+'</div>';return h}
-
+ h+=`<button class="pri wide" style="margin-top:12px" data-a="add">추가</button>`;
+ quick();
+ h+=`<div class="chips">${QF.map((e,k)=>`<button class="chip" data-a="qa" data-v="${k}">${E(e.n)}<small>${E(e.amt)}</small></button>`).join('')}${QX.map((e,k)=>`<button class="chip ex" data-a="qx" data-v="${k}">${E(e.n)}<small>${e.min?e.min+'분':r(e.k)+'kcal'}</small></button>`).join('')}${QF.length+QX.length?'':'<span class="mut">기록하면 최근·자주 먹은 메뉴가 여기 떠요. 누르면 바로 들어가요.</span>'}</div>`;
+ MEALS.forEach((n,mi)=>{const L=d.m.filter(e=>mealOf(e)==mi);h+=`<div class="sec"><div class="sh"><h2>${n}</h2><span class="mut">${r(sum(L,'k'))} kcal</span></div>`+(L.length?L.map(e=>`<div class="it ed" data-e="m" data-id="${e.id}"><div class="nm">${E(e.n)}<small>${E(e.amt)} · 탄 ${e.c} 단 ${e.p} 지 ${e.f}</small></div><b>${r(e.k)}</b><span class="row" style="gap:0"><button class="ic" data-a="mv" data-v="${e.id}" data-d="-1" ${mi==0?'disabled':''} aria-label="위 끼니로">↑</button><button class="ic" data-a="mv" data-v="${e.id}" data-d="1" ${mi==2?'disabled':''} aria-label="아래 끼니로">↓</button><button class="ic x" data-a="del" data-t="m" data-v="${e.id}" aria-label="삭제">×</button></span></div>`).join(''):'<p class="emp">기록 없음</p>')+'</div>'});
+ h+=`<div class="sec"><div class="sh"><h2>운동</h2><span class="mut">−${r(x)} kcal</span></div>`+(d.x.length?d.x.map(e=>`<div class="it ed" data-e="x" data-id="${e.id}"><div class="nm">${E(e.n)}<small>${e.min?e.min+'분':'직접 입력'}</small></div><b>${r(e.k)}</b><button class="ic x" data-a="del" data-t="x" data-v="${e.id}" aria-label="삭제">×</button></div>`).join(''):'<p class="emp">기록 없음</p>')+'</div><p class="mut" style="margin-top:10px">기록을 고치려면 그 줄을 우클릭(휴대폰은 꾹 누르기)하세요.</p>';return h}
 function vCal(){const P=plan(),[y,m]=S.ym.split('-').map(Number),first=new Date(y,m-1,1).getDay(),n=new Date(y,m,0).getDate();let ok=0,no=0,c=['일','월','화','수','목','금','토'].map(w=>`<div class="h">${w}</div>`).join('')+'<i></i>'.repeat(first);
- for(let i=1;i<=n;i++){const d=y+'-'+pad(m)+'-'+pad(i),s=d<=TODAY?stat(d,P):null;s=='ok'?ok++:s=='no'&&no++;c+=`<button data-a="goday" data-v="${d}" class="${d==TODAY?'td':''}">${i}${s?`<span class="stamp ${s}">${s=='ok'?'성공':'실패'}</span>`:''}</button>`}
+ for(let i=1;i<=n;i++){const d=y+'-'+pad(m)+'-'+pad(i),s=d<=TODAY?stat(d):null;s=='ok'?ok++:s=='no'&&no++;c+=`<button data-a="goday" data-v="${d}" class="${d==TODAY?'td':''}">${i}${s?`<span class="stamp ${s}">${s=='ok'?'성공':'실패'}</span>`:''}</button>`}
  const tail=(7-(first+n)%7)%7;c+='<i></i>'.repeat(tail);
- return `<div class="dnav"><button data-a="cm" data-v="-1" aria-label="전달">‹</button><h2 style="text-align:center;align-self:center">${y}년 ${m}월</h2><button data-a="cm" data-v="1" aria-label="다음달">›</button></div><div class="cal" style="margin-top:12px">${c}</div>`+(P?`<p style="margin:14px 0 2px"><b>성공 ${ok}일 · 실패 ${no}일</b>${ok+no?` <span class="mut">(성공률 ${r(ok/(ok+no)*100)}%)</span>`:''}</p><p class="mut">섭취 − 운동이 기준 ${P.budget} kcal 이하면 성공이에요. 식단을 기록한 날만 도장이 찍혀요.</p>`:'<p class="mut" style="margin-top:14px">설정에서 목표를 넣으면 도장이 찍혀요.</p>')}
+ return `<div class="dnav"><button data-a="cm" data-v="-1" aria-label="전달">‹</button><h2 style="text-align:center;align-self:center">${y}년 ${m}월</h2><button data-a="cm" data-v="1" aria-label="다음달">›</button></div><div class="cal" style="margin-top:12px">${c}</div>`+`<p style="margin:14px 0 2px"><b>성공 ${ok}일 · 실패 ${no}일</b>${ok+no?` <span class="mut">(성공률 ${r(ok/(ok+no)*100)}%)</span>`:''}</p><p class="mut">섭취 − 운동이 그날 기준 칼로리${P?`(오늘 ${P.budget} kcal)`:''} 이하면 성공이에요. 다이어트 기간 안에 식단을 기록한 날만 도장이 찍혀요.</p>`}
 
-function chart(){const bd=st.get('bd',[]),k=S.mt,pts=bd.filter(e=>e[k]).slice(-30),P=plan();if(pts.length<2)return '<p class="mut" style="padding:10px 0">기록이 2개 이상이면 그래프가 나와요.</p>';
+function chart(){const bd=st.get('bd',[]),k=S.mt,pts=bd.filter(e=>e[k]).slice(-30),P=plan()||plan(pts.length?pts[pts.length-1].d:TODAY);if(pts.length<2)return '<p class="mut" style="padding:10px 0">기록이 2개 이상이면 그래프가 나와요.</p>';
  const vs=pts.map(e=>+e[k]);let lo=Math.min(...vs),hi=Math.max(...vs);if(k=='w'&&P){lo=Math.min(lo,P.tw);hi=Math.max(hi,P.tw)}if(hi==lo){hi++;lo--}
  const X=i=>26+i*(284/(pts.length-1)),Y=v=>135-(v-lo)/(hi-lo)*110;let s='<svg viewBox="0 0 320 160" class="ch">';
  if(k=='w'&&P)s+=`<line class="t" x1="26" x2="310" y1="${Y(P.tw)}" y2="${Y(P.tw)}"/><text class="tt" x="310" y="${Y(P.tw)-4}" text-anchor="end">목표 ${P.tw}</text>`;
  s+=`<polyline class="l" points="${pts.map((e,i)=>X(i)+','+Y(+e[k])).join(' ')}"/>`+pts.map((e,i)=>`<circle class="p" cx="${X(i)}" cy="${Y(+e[k])}" r="3"/>`).join('')+`<text x="0" y="28">${hi}</text><text x="0" y="138">${lo}</text><text x="26" y="156">${pts[0].d.slice(5)}</text><text x="310" y="156" text-anchor="end">${pts[pts.length-1].d.slice(5)}</text></svg>`;return s}
-function vBody(){const bd=st.get('bd',[]),M={w:'체중',f:'체지방률',m:'골격근량'},b=bd.find(e=>e.d==TODAY)||{};
- return `<div class="sh"><h2>체성분 기록</h2></div><label>날짜</label><input type="date" id="bdt" value="${TODAY}" data-i="bdt"><div class="g3"><div><label>체중(kg)</label><input type="number" step="0.1" inputmode="decimal" id="bw" value="${E(b.w||'')}"></div><div><label>체지방률(%)</label><input type="number" step="0.1" inputmode="decimal" id="bf" value="${E(b.f||'')}"></div><div><label>골격근량(kg)</label><input type="number" step="0.1" inputmode="decimal" id="bm" value="${E(b.m||'')}"></div></div><button class="pri wide" style="margin-top:12px" data-a="sb">저장</button>
+function vBody(){const bd=st.get('bd',[]),M={w:'체중',f:'체지방률',m:'골격근량'},b=bd.find(e=>e.d==S.bdd)||{};
+ return `<div class="sh"><h2>체성분 기록</h2></div><div class="dnav" style="margin-top:10px"><button data-a="bdd" data-v="-1" aria-label="전날">‹</button><input type="date" id="bdt" value="${S.bdd}" data-i="bdt"><button data-a="bdd" data-v="1" aria-label="다음날">›</button></div><div class="g3"><div><label>체중(kg)</label><input type="number" step="0.1" inputmode="decimal" id="bw" value="${E(b.w||'')}"></div><div><label>체지방률(%)</label><input type="number" step="0.1" inputmode="decimal" id="bf" value="${E(b.f||'')}"></div><div><label>골격근량(kg)</label><input type="number" step="0.1" inputmode="decimal" id="bm" value="${E(b.m||'')}"></div></div><button class="pri wide" style="margin-top:12px" data-a="sb">저장</button>
  <div class="sec"><div class="sh"><h2>그래프</h2></div><div class="scr">${Object.keys(M).map(k=>`<button class="${S.mt==k?'on':''}" data-a="mt" data-v="${k}">${M[k]}</button>`).join('')}</div>${chart()}</div>
  <div class="sec"><div class="sh"><h2>기록</h2><span class="mut">${bd.length}개</span></div>${bd.length?bd.slice().reverse().slice(0,60).map(e=>`<div class="it"><div class="nm">${e.d}<small>체중 ${e.w||'-'} · 체지방 ${e.f||'-'} · 골격근 ${e.m||'-'}</small></div><button class="ic x" data-a="delb" data-v="${e.d}" aria-label="삭제">×</button></div>`).join(''):'<p class="emp">기록 없음</p>'}</div>`}
-function vSet(){const p=st.get('pf',{sex:'f',act:'1.2',start:TODAY,end:addD(TODAY,90)}),P=plan(),v=k=>E(p[k]??'');
- return `<div class="sh"><h2>내 정보와 목표</h2></div><label>성별</label><div class="seg" id="ps" data-v="${p.sex}"><button class="${p.sex=='f'?'on':''}" data-a="sex" data-v="f">여성</button><button class="${p.sex=='m'?'on':''}" data-a="sex" data-v="m">남성</button></div>
- <div class="g2"><div><label>나이</label><input type="number" inputmode="numeric" id="pa" value="${v('age')}"></div><div><label>키(cm)</label><input type="number" inputmode="decimal" id="ph" value="${v('h')}"></div><div><label>현재 체중(kg)</label><input type="number" step="0.1" inputmode="decimal" id="pw" value="${v('w')}"></div><div><label>목표 체중(kg)</label><input type="number" step="0.1" inputmode="decimal" id="pt" value="${v('tw')}"></div><div><label>시작일</label><input type="date" id="p1" value="${v('start')}"></div><div><label>목표일</label><input type="date" id="p2" value="${v('end')}"></div></div>
- <label>평소 활동량 (운동 기록은 따로 계산돼요)</label><div class="pick" id="pc" data-v="${p.act}">${[['1.2','거의 앉아서'],['1.375','가볍게 움직임'],['1.55','활동 많음']].map(a=>`<button class="${p.act==a[0]?'on':''}" data-a="act" data-v="${a[0]}">${a[1]}</button>`).join('')}</div><button class="pri wide" style="margin-top:14px" data-a="sp">저장</button>`+
- (P?`<div class="sum" style="border-top:1px solid var(--ln);margin-top:16px;padding-top:12px"><b>하루 기준 ${P.budget} kcal</b><p class="mut">기초대사량 ${P.bmr} · 하루 소비 ${P.tdee} kcal<br>${P.diff}kg을 ${P.days}일 동안 → 하루 ${P.def} kcal 적자 필요</p>${P.warn?'<p class="warn">목표가 무리해요. 기준을 기초대사량 아래로 내리지 않고 그 값으로 맞췄어요. 기간을 늘리는 걸 권해요.</p>':''}</div>`:'')+
- `<div class="sec"><div class="sh"><h2>앱 설치</h2></div><div class="it"><span class="mut nm" id="insm"></span><button id="inst" data-a="inst">📲 설치</button></div></div><div class="sec"><div class="sh"><h2>계정</h2></div><div class="it"><span class="mut nm">${E(SES&&SES.user&&SES.user.email||'')}</span><button data-a="out">로그아웃</button></div><p class="mut" style="margin-top:8px">기록은 적는 즉시 저장되고, 같은 아이디로 로그인한 다른 기기와 자동으로 맞춰져요.</p></div>`}
+function vSet(){const p=prof()||{sex:'f',act:'1.2',goals:[]},P=plan(),v=k=>E(p[k]??''),G=p.goals,ge=S.ge,eg=ge>=0?G[ge]:null;
+ const gst=g=>TODAY<g.start?'예정':TODAY>g.end?'끝남':'진행 중';
+ let h=`<div class="sh"><h2>내 정보</h2></div><label>성별</label><div class="seg" id="ps" data-v="${p.sex||'f'}"><button class="${p.sex!='m'?'on':''}" data-a="sex" data-v="f">여성</button><button class="${p.sex=='m'?'on':''}" data-a="sex" data-v="m">남성</button></div>
+ <div class="g2"><div><label>생년월일</label><input type="date" id="pb" value="${v('birth')}"></div><div><label>키(cm)</label><input type="number" inputmode="decimal" id="ph" value="${v('h')}"></div></div>
+ ${!p.birth&&p.age?`<p class="warn">생년월일을 넣어 주세요. 지금은 예전에 적은 나이 ${E(p.age)}세로 계산하고 있어요.</p>`:''}
+ <label>평소 활동량 (운동 기록은 따로 계산돼요)</label><div class="pick" id="pc" data-v="${p.act||'1.2'}">${[['1.2','거의 앉아서'],['1.375','가볍게 움직임'],['1.55','활동 많음']].map(a=>`<button class="${(p.act||'1.2')==a[0]?'on':''}" data-a="act" data-v="${a[0]}">${a[1]}</button>`).join('')}</div><button class="pri wide" style="margin-top:14px" data-a="sp">저장</button>`;
+ h+=`<div class="sec"><div class="sh"><h2>다이어트 기간</h2><span class="mut">${G.length}개</span></div>`+(G.length?G.map((g,k)=>`<div class="it" data-a="gedit" data-v="${k}" style="cursor:pointer${k==ge?';background:var(--sf)':''}"><div class="nm"><b>${k+1}차</b> · ${g.start} ~ ${g.end}<small>${E(g.w)} → ${E(g.tw)} kg · ${gst(g)}</small></div><button class="ic x" data-a="gdel" data-v="${k}" aria-label="삭제">×</button></div>`).join(''):'<p class="emp">아직 없어요. 아래에서 추가하세요.</p>')+
+  `<p class="mut" style="margin-top:12px">${eg?`<b>${ge+1}차</b> 고치는 중`:'새 기간'}</p><div class="g2"><div><label>시작일</label><input type="date" id="g1" value="${eg?eg.start:TODAY}"></div><div><label>목표일</label><input type="date" id="g2" value="${eg?eg.end:addD(TODAY,90)}"></div><div><label>시작 체중(kg)</label><input type="number" step="0.1" inputmode="decimal" id="gw" value="${eg?E(eg.w):lastW()}"></div><div><label>목표 체중(kg)</label><input type="number" step="0.1" inputmode="decimal" id="gt" value="${eg?E(eg.tw):''}"></div></div><div class="row" style="margin-top:12px">${eg?'<button data-a="gcancel" style="flex:1">취소</button>':''}<button class="pri" style="flex:2" data-a="gsave">${eg?`${ge+1}차 저장`:'기간 추가'}</button></div></div>`;
+ if(P)h+=`<div class="sec"><div class="sh"><h2>오늘 기준</h2><span class="mut">${P.n}차</span></div><p style="margin:10px 0 2px"><b>하루 ${P.budget} kcal</b></p><p class="mut">${P.age}세 · 체중 ${P.w}kg 기준 → 기초대사량 ${P.bmr} · 하루 소비 ${P.tdee} kcal<br>${P.diff}kg을 ${P.days}일 동안 → 하루 ${P.def} kcal 적자<br>생일이 지나거나 체중을 새로 재면 그날부터 자동으로 다시 계산돼요.</p>${P.warn?'<p class="warn">목표가 무리해요. 기준을 기초대사량 아래로 내리지 않고 그 값으로 맞췄어요. 기간을 늘리는 걸 권해요.</p>':''}</div>`;
+ return h+`<div class="sec"><div class="sh"><h2>앱 설치</h2></div><div class="it"><span class="mut nm" id="insm"></span><button id="inst" data-a="inst">📲 설치</button></div></div><div class="sec"><div class="sh"><h2>계정</h2></div><div class="it"><span class="mut nm">${E(SES&&SES.user&&SES.user.email||'')}</span><button data-a="out">로그아웃</button></div><p class="mut" style="margin-top:8px">기록과 목표는 적는 즉시 저장되고(Supabase), 같은 아이디로 로그인한 다른 기기와 자동으로 맞춰져요.</p></div>`}
 function R(){$('#v').innerHTML={t:vToday,c:vCal,b:vBody,s:vSet}[S.tab]();if(S.tab=='s')instUI();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('cur',b.dataset.v==S.tab))}
 
 /* 추가 팝업: 음식 / 운동. 위·아래 줄은 고정, 가운데만 스크롤. 바깥을 누르면 닫힘 */
 const D={};const allFoods=()=>BI.concat(st.get('cf',[]).map(x=>({...x,my:1})));
 const CLOSE='<button data-a="close">닫기</button>',dg=()=>$('#dg');
-function openAdd(){Object.assign(D,{top:0,q:'',cat:'전체',sel:null,mode:'s',meal:slotNow(),xi:0});dF();dg().showModal()}
+function openAdd(){Object.assign(D,{ed:null,top:0,q:'',cat:'전체',sel:null,mode:'s',meal:slotNow(),xi:0});dF();dg().showModal()}
 function frame(h,b,f){dg().innerHTML=`<div class="dh">${h}</div><div class="db" id="db">${b}</div><div class="df">${f}</div>`}
 const segFX=()=>`<div class="row"><div class="seg"><button class="${D.mode=='x'?'':'on'}" data-a="dm" data-v="s">음식</button><button class="${D.mode=='x'?'on':''}" data-a="dm" data-v="x">운동</button></div><span class="mut" style="margin-left:auto">${D.mode=='x'?'운동':MEALS[D.meal]}에 들어가요</span></div>`;
 function dF(){
- if(D.sel){const f=D.sel,hu=f.u&&f.g;frame(`<div class="row"><button class="lk" data-a="back">‹ 뒤로</button><h2 style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(f.n)}</h2></div>`,
-  `<label>양</label><input class="amt" type="number" id="am" step="any" inputmode="decimal" value="${D.amt}" data-i="pv"><label>단위</label><div class="pick">${hu?`<button class="${D.unit=='u'?'on':''}" data-a="unit" data-v="u">${E(f.u)} (${f.g}g)</button>`:''}<button class="${D.unit=='g'?'on':''}" data-a="unit" data-v="g">g</button></div><p class="pvx" id="pvx"></p>`,
-  CLOSE+`<button class="pri" data-a="fadd">${MEALS[D.meal]}에 추가</button>`);pv();return}
+ if(D.mode=='xe'){const e=D.ed;frame(`<h2>수정 · ${E(e.n)}</h2>`,`<div class="g2"><div><label>시간(분)</label><input type="number" inputmode="numeric" id="em" value="${e.min||''}"></div><div><label>소모 칼로리(kcal)</label><input type="number" inputmode="numeric" id="ek" value="${r(e.k)}"></div></div><p class="mut" style="margin-top:8px">시간을 바꾸면 칼로리도 같은 비율로 바뀌어요.</p>`,CLOSE+'<button class="pri" data-a="xsave">저장</button>');return}
+ if(D.sel){const f=D.sel,hu=f.u&&f.g;frame(D.ed?`<h2>수정 · ${E(f.n)}</h2>`:`<div class="row"><button class="lk" data-a="back">‹ 뒤로</button><h2 style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(f.n)}</h2></div>`,
+  `<label>양</label><input class="amt" type="number" id="am" step="any" inputmode="decimal" value="${D.amt}" data-i="pv"><label>단위</label><div class="pick">${hu?`<button class="${D.unit=='u'?'on':''}" data-a="unit" data-v="u">${E(f.u)} (${f.g}g)</button>`:''}<button class="${D.unit=='g'?'on':''}" data-a="unit" data-v="g">g</button></div>${D.ed?`<label>끼니</label><div class="pick">${MEALS.map((n,k)=>`<button class="${D.meal==k?'on':''}" data-a="emeal" data-v="${k}">${n}</button>`).join('')}</div>`:''}<p class="pvx" id="pvx"></p>`,
+  CLOSE+`<button class="pri" data-a="fadd">${D.ed?'저장':MEALS[D.meal]+'에 추가'}</button>`);pv();return}
  if(D.mode=='c'){frame(`<div class="row"><button class="lk" data-a="back">‹ 뒤로</button><h2>직접 입력</h2></div>`,
   `<label>음식 이름</label><input id="cn"><label>카테고리</label><div class="pick" id="cc" data-v="기타">${CATS.map(c=>`<button class="${c=='기타'?'on':''}" data-a="ccat" data-v="${c}">${c}</button>`).join('')}</div><div class="g2"><div><label>아래 성분의 기준량(g)</label><input type="number" id="cg" value="100"></div><div><label>칼로리(kcal)</label><input type="number" id="ck"></div><div><label>탄수화물(g)</label><input type="number" id="cC"></div><div><label>단백질(g)</label><input type="number" id="cP"></div><div><label>지방(g)</label><input type="number" id="cF"></div><div></div><div><label>1회 단위 이름 (예: 잔, 개)</label><input id="cu"></div><div><label>1회 단위의 g (없으면 기준량)</label><input type="number" id="cug"></div></div><p class="mut" style="margin-top:10px">카페 음료처럼 1잔 기준 성분이면 기준량에 용량(예: 355)을 넣으세요.</p>`,
   CLOSE+'<button class="pri" data-a="fsave">저장하고 선택</button>');return}
@@ -314,8 +330,15 @@ function res(){const el=$('#res');if(!el)return;const q=D.q.trim(),A=allFoods();
  if(!q&&D.cat=='전체'){const rc=st.get('rc',[]),R2=rc.map(n=>A.find(f=>f.n==n)).filter(Boolean);if(R2.length)L=R2.concat(L.filter(f=>!R2.includes(f)))}
  D.L=L.slice(0,80);el.innerHTML=D.L.length?D.L.map((f,i)=>`<div class="it" data-a="fs" data-v="${i}"><div class="nm">${E(f.n)}<small>${E(f.cat)}</small></div><span class="mut">${r(f.k)}/100g</span>${f.my?`<button class="ic x" data-a="fdel" data-v="${E(f.n)}" aria-label="내 음식에서 삭제">×</button>`:''}</div>`).join(''):'<p class="mut" style="padding:12px 0">결과가 없어요. 직접 입력으로 추가해 보세요.</p>'}
 function pv(){const f=D.sel,a=+$('#am').value||0,g=D.unit=='u'?a*f.g:a,m=g/100;$('#pvx').textContent=`${r(g)}g · ${r(f.k*m)} kcal`;$('#pvx').insertAdjacentHTML('beforeend',`<span class="mut" style="display:block;font-weight:400">탄 ${o1(f.c*m)} · 단 ${o1(f.p*m)} · 지 ${o1(f.f*m)}</span>`)}
+/* 기록 수정(우클릭·꾹 누르기): 음식은 양·단위·끼니, 운동은 시간·칼로리 */
+function openEdit(t,id){if(dg().open)return;const d=day(S.date),e=(t=='m'?d.m:d.x).find(x=>x.id==id);if(!e)return;D.ed=e;D.top=0;
+ if(t=='x'){D.mode='xe';D.sel=null;dF();dg().showModal();return}
+ const g=+e.g||0,m=g>0?100/g:0,F=allFoods().find(f=>f.n==e.n)||{},f={n:e.n,cat:e.cat,k:e.k*m,c:e.c*m,p:e.p*m,f:e.f*m,u:F.u||'',g:F.g||0};
+ D.mode='s';D.sel=f;D.meal=mealOf(e);const n=parseFloat(e.amt);if(f.u&&f.g&&String(e.amt).endsWith(f.u)&&n>0){D.unit='u';D.amt=n}else{D.unit='g';D.amt=g}dF();dg().showModal()}
 function pick(f){D.sel=f;D.unit=f.u&&f.g?'u':'g';D.amt=D.unit=='u'?1:100}
-function xp(){const i=D.xi,min=+$('#xm').value||0;D.xmin=min;if(i>=0){$('#xk').value=r(MET[i][1]*lastW()*min/60);$('#xh').textContent=`MET ${MET[i][1]} × 체중 ${lastW()}kg 기준 추정값이에요. 직접 고칠 수 있어요.`}else{$('#xk').value='';$('#xh').textContent='소모 칼로리를 직접 적어 주세요.'}}
+function xp(){const i=D.xi,min=+$('#xm').value||0;D.xmin=min;if(i>=0){$('#xk').value=r(MET[i][1]*lastW(S.date)*min/60);$('#xh').textContent=`MET ${MET[i][1]} × 체중 ${lastW(S.date)}kg 기준 추정값이에요. 직접 고칠 수 있어요.`}else{$('#xk').value='';$('#xh').textContent='소모 칼로리를 직접 적어 주세요.'}}
+/* 내 정보 저장: 예전 칸(age는 생일이 들어오면, w·tw·start·end는 기간으로 옮겼으니) 정리 */
+const savePf=p=>{const o={sex:p.sex,birth:p.birth||'',h:p.h,act:p.act,goals:p.goals};if(!p.birth&&p.age)o.age=p.age;st.set('pf',o)};
 const qbSave=(d,w,f,m)=>{let bd=st.get('bd',[]).filter(x=>x.d!=d);if(w||f||m){bd.push({d,w,f,m});bd.sort((a,b)=>a.d<b.d?-1:1)}st.set('bd',bd)};
 
 const A={tab:v=>{S.tab=v;R();scrollTo(0,0)},dd:v=>{S.date=addD(S.date,+v);R()},sd:v=>{if(v){S.date=v;R()}},add:openAdd,close:()=>dg().close(),
@@ -330,8 +353,9 @@ const A={tab:v=>{S.tab=v;R();scrollTo(0,0)},dd:v=>{S.date=addD(S.date,+v);R()},s
  back:()=>{D.sel=null;D.mode='s';dF();$('#db').scrollTop=D.top||0},
  unit:v=>{if(v==D.unit)return;const f=D.sel,a=+$('#am').value||0;D.amt=v=='g'?r(a*f.g):o1(a/f.g)||1;D.unit=v;dF()},
  pv:v=>{D.amt=v;pv()},xp,xk:v=>{D.xi=+v;D.xmin=+$('#xm').value||30;dF()},ccat:(v,b)=>{b.parentNode.dataset.v=v;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b))},
- fadd(){const f=D.sel,a=+$('#am').value;if(!(a>0))return;const u=D.unit=='u',g=u?a*f.g:a,m=g/100,d=day(S.date);
-  d.m.push({id:Date.now(),meal:D.meal,n:f.n,cat:f.cat,amt:u?a+f.u:r(g)+'g',g:r(g),k:o1(f.k*m),c:o1(f.c*m),p:o1(f.p*m),f:o1(f.f*m)});saveDay(S.date,d);
+ fadd(){const f=D.sel,a=+$('#am').value;if(!(a>0))return;const u=D.unit=='u',g=u?a*f.g:a,m=g/100,d=day(S.date),ne={id:Date.now(),meal:D.meal,n:f.n,cat:f.cat,amt:u?a+f.u:r(g)+'g',g:r(g),k:o1(f.k*m),c:o1(f.c*m),p:o1(f.p*m),f:o1(f.f*m)};
+  if(D.ed){const k=d.m.findIndex(x=>x.id==D.ed.id);if(k>=0)d.m[k]={...ne,id:D.ed.id};saveDay(S.date,d);D.ed=null;dg().close();R();toast('고쳤어요');return}
+  d.m.push(ne);saveDay(S.date,d);
   st.set('rc',[f.n,...st.get('rc',[]).filter(n=>n!=f.n)].slice(0,15));dg().close();R();toast(`${MEALS[D.meal]}에 ${f.n} 추가`)},
  fsave(){const n=$('#cn').value.trim(),b=+$('#cg').value,k=+$('#ck').value;if(!n||!(b>0)||isNaN(k)||$('#ck').value===''){alert('이름, 기준량, 칼로리는 꼭 입력해 주세요.');return}
   const m=100/b,u=$('#cu').value.trim(),f={n,cat:$('#cc').dataset.v,k:k*m,c:(+$('#cC').value||0)*m,p:(+$('#cP').value||0)*m,f:(+$('#cF').value||0)*m,u,g:u?(+$('#cug').value||b):0};
@@ -339,20 +363,34 @@ const A={tab:v=>{S.tab=v;R();scrollTo(0,0)},dd:v=>{S.date=addD(S.date,+v);R()},s
  fdel(v,b,e){e.stopPropagation();if(confirm(v+' 을(를) 내 음식에서 삭제할까요? 지난 기록은 그대로 남아요.')){st.set('cf',st.get('cf',[]).filter(x=>x.n!=v));res()}},
  xadd(){const i=D.xi,k=+$('#xk').value,min=+$('#xm').value||0;if(!(k>0))return;const d=day(S.date);d.x.push({id:Date.now(),n:i>=0?MET[i][0]:'운동(직접 입력)',min:i>=0?min:0,k});saveDay(S.date,d);dg().close();R();toast('운동을 추가했어요')},
  mt:v=>{S.mt=v;R()},
- bdt:v=>{const b=st.get('bd',[]).find(e=>e.d==v)||{};$('#bw').value=b.w||'';$('#bf').value=b.f||'';$('#bm').value=b.m||''},
- sb(){const d=$('#bdt').value,w=$('#bw').value,f=$('#bf').value,m=$('#bm').value;if(!d||!(w||f||m))return;qbSave(d,w,f,m);R();toast('저장했어요')},
+ emeal:v=>{D.meal=+v;D.amt=$('#am').value;dF()},
+ xsave(){const e=D.ed,d=day(S.date),k=d.x.findIndex(x=>x.id==e.id),min=+$('#em').value||0;let kc=+$('#ek').value;if(k<0)return;if(e.min&&min&&min!=e.min&&kc==r(e.k))kc=o1(e.k*min/e.min);if(!(kc>0))return;d.x[k]={...e,min:e.min?min:0,k:kc};saveDay(S.date,d);D.ed=null;dg().close();R();toast('고쳤어요')},
+ bdd:v=>{S.bdd=addD(S.bdd,+v);R()},
+ gedit:(v,b,e)=>{if(e.target.closest('[data-a=gdel]'))return;S.ge=+v;R();$('#g1').scrollIntoView({block:'center'})},gcancel:()=>{S.ge=-1;R()},
+ gdel(v,b,e){e.stopPropagation();const p=prof(),g=p.goals[+v];if(!confirm(`${+v+1}차 (${g.start} ~ ${g.end}) 기간을 지울까요?`))return;p.goals.splice(+v,1);S.ge=-1;savePf(p);R()},
+ gsave(){const g={start:$('#g1').value,end:$('#g2').value,w:+$('#gw').value,tw:+$('#gt').value};if(!g.start||!g.end||g.end<=g.start){alert('목표일은 시작일보다 뒤여야 해요.');return}if(!(g.w>0)||!(g.tw>0)){alert('시작 체중과 목표 체중을 넣어 주세요.');return}
+  const p=prof()||{sex:'f',act:'1.2',goals:[]},o=p.goals.filter((x,k)=>k!=S.ge).find(x=>x.start<=g.end&&g.start<=x.end);if(o&&!confirm(`${o.start} ~ ${o.end} 기간과 날짜가 겹쳐요. 겹치는 날은 나중에 시작한 기간을 따라요. 저장할까요?`))return;
+  if(S.ge>=0)p.goals[S.ge]=g;else p.goals.push(g);S.ge=-1;savePf(p);R();toast('저장했어요')},
+ bdt:v=>{if(v){S.bdd=v;R()}},
+ sb(){const d=S.bdd,w=$('#bw').value,f=$('#bf').value,m=$('#bm').value;if(!d||!(w||f||m))return;qbSave(d,w,f,m);R();toast('저장했어요')},
  delb:v=>{st.set('bd',st.get('bd',[]).filter(x=>x.d!=v));R()},
  sex:(v,b)=>A.ccat(v,b),act:(v,b)=>A.ccat(v,b),
- sp(){const p={sex:$('#ps').dataset.v,age:+$('#pa').value,h:+$('#ph').value,w:+$('#pw').value,tw:+$('#pt').value,start:$('#p1').value,end:$('#p2').value,act:$('#pc').dataset.v};if(p.end<=p.start){alert('목표일은 시작일보다 뒤여야 해요.');return}st.set('pf',p);R();toast('저장했어요')},
+ sp(){const p=prof()||{goals:[]};Object.assign(p,{sex:$('#ps').dataset.v,birth:$('#pb').value,h:+$('#ph').value,act:$('#pc').dataset.v});if(!p.birth&&!p.age){alert('생년월일을 넣어 주세요.');return}if(!(p.h>0)){alert('키를 넣어 주세요.');return}savePf(p);R();toast('저장했어요')},
  inst:()=>instGo(),
  out(){if(!confirm('로그아웃할까요? 이 기기에 저장된 bdbd 기록도 지워져요(서버에는 남아요).'))return;flush();saveSes(null);lsClear();for(const k in mem)delete mem[k];for(const k in TS)delete TS[k];show()}};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b&&A[b.dataset.a])A[b.dataset.a](b.dataset.v,b,e)});
 document.addEventListener('input',e=>{const a=e.target.dataset.i;if(a&&A[a])A[a](e.target.value,e.target)});
+/* 기록 줄 우클릭(PC) · 꾹 누르기(휴대폰) → 수정 */
+document.addEventListener('contextmenu',e=>{const it=e.target.closest('.ed');if(!it)return;e.preventDefault();openEdit(it.dataset.e,it.dataset.id)});
+let lp=null,lpDone=false;
+document.addEventListener('touchstart',e=>{const it=e.target.closest('.ed');lpDone=false;if(!it||e.target.closest('button'))return;clearTimeout(lp);lp=setTimeout(()=>{lpDone=true;openEdit(it.dataset.e,it.dataset.id)},550)},{passive:true});
+['touchend','touchmove','touchcancel'].forEach(t=>document.addEventListener(t,()=>clearTimeout(lp),{passive:true}));
+document.addEventListener('click',e=>{if(lpDone){lpDone=false;e.stopPropagation();e.preventDefault()}},true);
 /* 팝업 바깥(어두운 곳)을 누르면 닫기 */
 dg().addEventListener('click',e=>{if(e.target===e.currentTarget)dg().close()});
 
 /* 시작 */
-function show(){$('#login').hidden=!!SES;$('#app').hidden=!SES;if(SES){const uid=SES.user&&SES.user.id;if(lsG('uid')&&lsG('uid')!=uid){lsClear();for(const k in TS)delete TS[k]}lsS('uid',uid);TODAY=todayKST();S.date=TODAY;S.ym=TODAY.slice(0,7);R();pull()}}
+function show(){$('#login').hidden=!!SES;$('#app').hidden=!SES;if(SES){const uid=SES.user&&SES.user.id;if(lsG('uid')&&lsG('uid')!=uid){lsClear();for(const k in TS)delete TS[k]}lsS('uid',uid);TODAY=todayKST();S.date=S.bdd=TODAY;S.ym=TODAY.slice(0,7);R();pull()}}
 $('#go').onclick=async()=>{$('#lmsg').textContent='';try{saveSes(await gotrue('password',{email:$('#lem').value.trim(),password:$('#lpw').value}));show()}catch(e){$('#lmsg').textContent=e.message}};
 $('#lpw').addEventListener('keydown',e=>{if(e.key==='Enter')$('#go').click()});
 $('#rld').onclick=()=>location.reload();
