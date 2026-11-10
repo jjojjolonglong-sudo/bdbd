@@ -389,6 +389,9 @@ document.addEventListener('click',e=>{if(lpDone){lpDone=false;e.stopPropagation(
 /* 팝업 바깥(어두운 곳)을 누르면 닫기 */
 dg().addEventListener('click',e=>{if(e.target===e.currentTarget)dg().close()});
 
+/* 날짜 칸: 연도는 4자리까지만 (모든 앱 공통 규칙). 새로 그려지는 칸에도 자동으로 붙여요 */
+const capDate=()=>document.querySelectorAll('input[type=date]:not([max])').forEach(i=>{i.max='9999-12-31';i.min=i.min||'1900-01-01'});
+new MutationObserver(capDate).observe(document.body,{childList:true,subtree:true});capDate();
 /* 시작 */
 function show(){$('#login').hidden=!!SES;$('#app').hidden=!SES;if(SES){const uid=SES.user&&SES.user.id;if(lsG('uid')&&lsG('uid')!=uid){lsClear();for(const k in TS)delete TS[k]}lsS('uid',uid);TODAY=todayKST();S.date=S.bdd=TODAY;S.ym=TODAY.slice(0,7);R();pull()}}
 $('#go').onclick=async()=>{$('#lmsg').textContent='';try{saveSes(await gotrue('password',{email:$('#lem').value.trim(),password:$('#lpw').value}));show()}catch(e){$('#lmsg').textContent=e.message}};
