@@ -314,7 +314,7 @@ const D={};
 const allFoods=()=>st.get('sf',[]).concat(BI,st.get('cf',[]).map(x=>({...x,my:1})));
 const KL={외식:'외식',음식:'음식',원재료:'재료',가공:'가공'};
 function toFood(x){const bn=parseFloat(x.base)||100,m=100/bn,ml=/ml/i.test(x.base||''),w=String(x.wt||'').match(/([\d.]+)\s*(g|ml)/i),g=w?+w[1]:0,brand=x.kind=='외식'&&x.maker,mk=String(x.maker||'').replace(/\(주\)|㈜|주식회사|농업회사법인|어업회사법인/g,'').trim();
- return{n:brand?x.maker+' '+x.n:x.n,cat:brand?'외식':x.kind=='가공'?(mk?mk+' · 가공':'가공'):(KL[x.kind]||x.kind),k:(x.k||0)*m,c:(x.c||0)*m,p:(x.p||0)*m,f:(x.f||0)*m,u:g?(x.kind=='음식'?'인분':/ml/i.test(w[2])?'잔':'개'):'',g,bu:ml?'ml':'g',sid:x.id}}
+ return{n:brand?x.maker+' '+x.n:x.n,cat:brand?'외식':x.kind=='가공'?(mk?mk+' · 가공':'가공'):(KL[x.kind]||x.kind),k:(x.k||0)*m,c:(x.c||0)*m,p:(x.p||0)*m,f:(x.f||0)*m,u:g?(x.kind=='음식'?'인분':/ml/i.test(w[2])||(x.kind=='외식'&&/HOT|ICED|라떼|커피|티|에이드|스무디|주스|프라푸치노|블렌디드/i.test(x.n))?'잔':'개'):'',g,bu:ml?'ml':'g',sid:x.id}}
 let SQ=0,STm=null;
 async function srvSearch(q){const x=await fetch(SB+'/rest/v1/rpc/bdbd_food_search',{method:'POST',headers:{...await sbh()},body:JSON.stringify({q,lim:60})});if(!x.ok)throw 0;return (await x.json()).map(toFood)}
 const CLOSE='<button data-a="close">닫기</button>',dg=()=>$('#dg');
