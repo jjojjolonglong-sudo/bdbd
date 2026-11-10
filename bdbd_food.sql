@@ -19,16 +19,23 @@ alter table bdbd_food enable row level security;
 drop policy if exists "read all" on bdbd_food;
 create policy "read all" on bdbd_food for select to authenticated using (true);
 
--- 검색: 띄어쓰기로 나눈 낱말이 모두 들어간 것. 이름이 똑같은 것 → 이름이 검색어로 시작하는 것 → 카페·음식·원재료·가공 순 → 짧은 이름 순
+-- 검색(11-10 수정판): 띄어쓰기로 나눈 낱말(최대 4개)이 모두 들어간 것. 낱말마다 색인을 쓰도록 조건을 만들어 실행.
+-- 같은 이름·브랜드·열량은 하나로. 이름이 똑같은 것 → 검색어로 시작하는 것 → 외식·음식·원재료·가공 순 → 짧은 이름 순
 create or replace function bdbd_food_search(q text, lim int default 60)
-returns setof bdbd_food language sql stable set search_path = public, extensions as $$
-  with w as (select array_remove(string_to_array(trim(regexp_replace(q,'\s+',' ','g')),' '),'') a)
-  select f.* from bdbd_food f, w
-  where (select bool_and(f.s ilike '%' || replace(replace(x,'%','\%'),'_','\_') || '%') from unnest(w.a) x)
-  order by (f.n = trim(q)) desc, (f.n ilike replace(replace(trim(q),'%','\%'),'_','\_') || '%') desc,
-           case f.kind when '카페' then 0 when '음식' then 1 when '원재료' then 2 else 3 end, length(f.n)
-  limit least(greatest(lim,1),200)
-$$;
+returns setof bdbd_food language plpgsql stable set search_path = public, extensions as $$
+declare w text[]; cond text := ''; i int; qq text := trim(regexp_replace(coalesce(q,''),'\s+',' ','g'));
+begin
+  w := array_remove(string_to_array(qq,' '),'');
+  if w is null or array_length(w,1) is null then return; end if;
+  w := array(select '%' || replace(replace(replace(x,'\','\\'),'%','\%'),'_','\_') || '%' from unnest(w[1:4]) x);
+  for i in 1..array_length(w,1) loop cond := cond || format(' and s ilike $1[%s]', i); end loop;
+  return query execute
+   'select id,n,kind,maker,base,k,c,p,f,su,wt,s from (
+      select distinct on (n, coalesce(maker,''''), k) * from bdbd_food where true' || cond || ' order by n, coalesce(maker,''''), k, id limit 3000) t
+    order by (n = $2) desc, (n ilike replace(replace($2,''%'',''\%''),''_'',''\_'') || ''%'') desc,
+      case kind when ''외식'' then 0 when ''카페'' then 0 when ''음식'' then 1 when ''원재료'' then 2 else 3 end, length(n)
+    limit $3' using w, qq, least(greatest(lim,1),200);
+end $$;
 
 -- 넣기·고치기: 앱 주인 계정만(다른 사람은 실행해도 거절). 데이터 갱신할 때 씀
 create or replace function bdbd_food_put(rows jsonb)
