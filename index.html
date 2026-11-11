@@ -59,6 +59,10 @@ main{max-width:560px;margin:0 auto;padding:12px 16px calc(var(--nav) + 28px + en
 .st3{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ln);margin-top:10px}
 .st3>div{padding:8px 0 6px 12px;border-left:1px solid var(--ln)}.st3>div:first-child{padding-left:0;border-left:0}
 .st3 span{display:block;font-size:11.5px;color:var(--mut)}.st3 b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
+.st5{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--ln)}
+.st5>div{padding:8px 0 8px 8px;border-left:1px solid var(--ln);min-width:0}.st5>div:first-child{padding-left:0;border-left:0}
+.st5 span{display:block;font-size:11px;color:var(--mut);white-space:nowrap}.st5 b{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.st5 small{font-size:11px;font-weight:400;color:var(--mut);margin-left:1px}.st5 i{font-style:normal;font-weight:400;color:var(--mut);font-size:12px}.st5 i.ms{margin-left:1px}
 .st3.sm{margin-top:0}.st3.sm b{font-size:16px}.st3 small{font-size:12px;font-weight:400;color:var(--mut);margin-left:1px}
 .ed{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0}
@@ -274,14 +278,14 @@ function quick(){const from=addD(TODAY,-60),F=new Map(),X=new Map();
 function vToday(){const P=plan(S.date),p=prof(),d=day(S.date),i=sum(d.m,'k'),x=sum(d.x,'k'),net=i-x;let h=`<div class="dnav"><button data-a="dd" data-v="-1" aria-label="전날">‹</button><input type="date" value="${S.date}" data-i="sd"><button data-a="dd" data-v="1" aria-label="다음날">›</button></div><section class="sum">`;
  if(P){const left=P.budget-net,pc=Math.max(0,Math.min(100,net/P.budget*100));h+=`<div class="big ${left<0?'no':''}"><b>${Math.abs(r(left))}</b><span>kcal ${left<0?'초과':'남음'}</span><span class="mut" style="margin-left:auto">${P.n}차 · 기준 ${P.budget}</span></div><div class="bar"><i style="width:${pc}%"></i></div>`}
  else h+=`<p style="margin:0 0 6px">${!p||!p.h||(!p.birth&&!p.age)?'<b>설정</b>에서 내 정보와 다이어트 기간을 넣으면 하루 기준 칼로리가 나와요.':'이 날은 다이어트 기간이 아니에요. <span class="mut">(설정에서 기간 추가)</span>'}</p>`;
- h+=`<div class="st3"><div><span>섭취</span><b>${r(i)}</b></div><div><span>운동</span><b>${x?'−':''}${r(x)}</b></div><div><span>합계</span><b>${r(net)}</b></div></div><div class="st3 sm"><div><span>탄수화물</span><b>${r(sum(d.m,'c'))}<small>g</small></b></div><div><span>단백질</span><b>${r(sum(d.m,'p'))}<small>g</small></b></div><div><span>지방</span><b>${r(sum(d.m,'f'))}<small>g</small></b></div></div></section>`;
+ h+=`<div class="st3"><div><span>섭취</span><b>${r(i)}</b></div><div><span>운동</span><b>${x?'−':''}${r(x)}</b></div><div><span>합계</span><b>${r(net)}</b></div></div><div class="st5">${NUT.map(([k,l,u])=>{const L=d.m,miss=L.some(e=>e[k]==null),es=(k=='c'||k=='f')&&L.some(e=>e.est);return `<div><span>${l}</span><b>${es?'<i>≈</i>':''}${r(sum(L,k))}<small>${u}</small>${miss?'<i class="ms">*</i>':''}</b></div>`}).join('')}</div>${d.m.some(e=>NUT.some(([k])=>e[k]==null))?'<p class="mut" style="margin:0 0 8px">* 일부 메뉴는 이 값이 없어서 빼고 더했어요'+(d.m.some(e=>e.est)?' · ≈ 추정 포함':'')+'</p>':d.m.some(e=>e.est)?'<p class="mut" style="margin:0 0 8px">≈ 원본에 없는 값을 추정해 더했어요</p>':''}</section>`;
  const b=st.get('bd',[]).find(e=>e.d==S.date)||{};
  const has=!!(b.w||b.f||b.m),lk=has&&!S.qe?'disabled':'';
  h+=`<div class="qb"><div><label for="qw">체중(kg)</label><input type="number" step="0.1" inputmode="decimal" id="qw" ${lk} value="${E(b.w||'')}"></div><div><label for="qf">체지방률(%)</label><input type="number" step="0.1" inputmode="decimal" id="qf" ${lk} value="${E(b.f||'')}"></div><div><label for="qm">골격근량(%)</label><input type="number" step="0.1" inputmode="decimal" id="qm" ${lk} value="${E(b.m||'')}"></div>${has&&!S.qe?'<button data-a="qedit">수정</button>':'<button class="pri" data-a="qbs">기록</button>'}</div>`;
  h+=`<button class="pri wide" style="margin-top:22px" data-a="add">식사 추가</button>`;
  quick();
  h+=`<div class="chips">${QF.map((e,k)=>`<button class="chip" data-a="qa" data-v="${k}">${E(e.n)}<small>${E(e.amt)}</small></button>`).join('')}${QX.map((e,k)=>`<button class="chip ex" data-a="qx" data-v="${k}">${E(e.n)}<small>${e.min?e.min+'분':r(e.k)+'kcal'}</small></button>`).join('')}${QF.length+QX.length?'':'<span class="mut">기록하면 최근·자주 먹은 메뉴가 여기 떠요. 누르면 바로 들어가요.</span>'}</div>`;
- MEALS.forEach((n,mi)=>{const L=d.m.filter(e=>mealOf(e)==mi);h+=`<div class="sec"><div class="sh"><h2>${n}</h2><span class="mut">${r(sum(L,'k'))} kcal</span></div>`+(L.length?L.map(e=>`<div class="it ed" data-e="m" data-id="${e.id}"><div class="nm">${E(e.n)}<small>${E(e.amt)} · 탄 ${e.c} 단 ${e.p} 지 ${e.f}</small></div><b>${r(e.k)}</b><span class="row" style="gap:0"><button class="ic" data-a="mv" data-v="${e.id}" data-d="-1" ${mi==0?'disabled':''} aria-label="위 끼니로">↑</button><button class="ic" data-a="mv" data-v="${e.id}" data-d="1" ${mi==2?'disabled':''} aria-label="아래 끼니로">↓</button><button class="ic x" data-a="del" data-t="m" data-v="${e.id}" aria-label="삭제">×</button></span></div>`).join(''):'<p class="emp">기록 없음</p>')+'</div>'});
+ MEALS.forEach((n,mi)=>{const L=d.m.filter(e=>mealOf(e)==mi);h+=`<div class="sec"><div class="sh"><h2>${n}</h2><span class="mut">${r(sum(L,'k'))} kcal</span></div>`+(L.length?L.map(e=>`<div class="it ed" data-e="m" data-id="${e.id}"><div class="nm">${E(e.n)}<small>${E(e.amt)} · 탄 ${nv(e,'c')} 단 ${nv(e,'p')} 지 ${nv(e,'f')} 당 ${nv(e,'su')} 나 ${nv(e,'na')}</small></div><b>${r(e.k)}</b><span class="row" style="gap:0"><button class="ic" data-a="mv" data-v="${e.id}" data-d="-1" ${mi==0?'disabled':''} aria-label="위 끼니로">↑</button><button class="ic" data-a="mv" data-v="${e.id}" data-d="1" ${mi==2?'disabled':''} aria-label="아래 끼니로">↓</button><button class="ic x" data-a="del" data-t="m" data-v="${e.id}" aria-label="삭제">×</button></span></div>`).join(''):'<p class="emp">기록 없음</p>')+'</div>'});
  h+=`<div class="sec"><div class="sh"><h2>운동</h2><span class="mut">−${r(x)} kcal</span></div>`+(d.x.length?d.x.map(e=>`<div class="it ed" data-e="x" data-id="${e.id}"><div class="nm">${E(e.n)}<small>${e.min?e.min+'분':'직접 입력'}</small></div><b>${r(e.k)}</b><button class="ic x" data-a="del" data-t="x" data-v="${e.id}" aria-label="삭제">×</button></div>`).join(''):'<p class="emp">기록 없음</p>')+'</div><p class="mut" style="margin-top:10px">기록을 고치려면 그 줄을 우클릭(휴대폰은 꾹 누르기)하세요.</p>';return h}
 function vCal(){const P=plan(),[y,m]=S.ym.split('-').map(Number),first=new Date(y,m-1,1).getDay(),n=new Date(y,m,0).getDate();let ok=0,no=0,c=['일','월','화','수','목','금','토'].map(w=>`<div class="h">${w}</div>`).join('')+'<i></i>'.repeat(first);
  for(let i=1;i<=n;i++){const d=y+'-'+pad(m)+'-'+pad(i),s=d<=TODAY?stat(d):null;s=='ok'?ok++:s=='no'&&no++;c+=`<button data-a="goday" data-v="${d}" class="${d==TODAY?'td':''}">${i}${s?`<span class="stamp ${s}">${s=='ok'?'성공':'실패'}</span>`:''}</button>`}
@@ -312,11 +316,14 @@ function R(){$('#v').innerHTML={t:vToday,c:vCal,b:vBody,s:vSet}[S.tab]();if(S.ta
 /* 추가 팝업: 음식 / 운동. 위·아래 줄은 고정, 가운데만 스크롤. 바깥을 누르면 닫힘 */
 const D={};
 /* 음식 찾기는 두 단계: ① 기기에 있는 것(기본 목록·내 음식·한 번이라도 고른 서버 음식 'sf') 바로 → ② 서버 bdbd_food(공공데이터 35만 건+프랜차이즈 메뉴)에서 검색 */
-const allFoods=()=>st.get('sf',[]).concat(BI,st.get('cf',[]).map(x=>({...x,my:1})));
+const allFoods=()=>st.get('sf2',[]).concat(BI,st.get('cf',[]).map(x=>({...x,my:1})));
 const KL={외식:'외식',음식:'음식',원재료:'재료',가공:'가공'};
 function toFood(x){const bn=parseFloat(x.base)||100,m=100/bn,ml=/ml/i.test(x.base||''),w=String(x.wt||'').match(/([\d.]+)\s*(g|ml)/i),g=w?+w[1]:0,brand=x.kind=='외식'&&x.maker,mk=String(x.maker||'').replace(/\(주\)|㈜|주식회사|농업회사법인|어업회사법인/g,'').trim();
- return{n:brand?x.maker+' '+x.n:x.n,cat:brand?'외식':x.kind=='가공'?(mk?mk+' · 가공':'가공'):(KL[x.kind]||x.kind),k:(x.k||0)*m,c:(x.c||0)*m,p:(x.p||0)*m,f:(x.f||0)*m,u:g?(x.kind=='음식'?'인분':/ml/i.test(w[2])||(x.kind=='외식'&&/HOT|ICED|라떼|커피|티|에이드|스무디|주스|프라푸치노|블렌디드/i.test(x.n))?'잔':'개'):'',g,bu:ml?'ml':'g',sid:x.id}}
+ return{n:brand?x.maker+' '+x.n:x.n,cat:brand?'외식':x.kind=='가공'?(mk?mk+' · 가공':'가공'):(KL[x.kind]||x.kind),k:(x.k||0)*m,c:mul(x.c,m,3),p:mul(x.p,m,3),f:mul(x.f,m,3),su:mul(x.su,m,3),na:mul(x.na,m,3),est:x.est?1:undefined,u:g?(x.kind=='음식'?'인분':/ml/i.test(w[2])||(x.kind=='외식'&&/HOT|ICED|라떼|커피|티|에이드|스무디|주스|프라푸치노|블렌디드/i.test(x.n))?'잔':'개'):'',g,bu:ml?'ml':'g',sid:x.id}}
 let SQ=0,STm=null;
+/* 영양값: null·undefined = 모름(원본 빈칸). 곱해도 모름 유지 */
+const mul=(v,m,d=1)=>v==null||v===''?null:Math.round(v*m*10**d)/10**d,NUT=[['c','탄수화물','g'],['p','단백질','g'],['f','지방','g'],['su','당류','g'],['na','나트륨','mg']];
+const nv=(e,k)=>e[k]==null?'–':(e.est&&(k=='c'||k=='f')?'≈':'')+(k=='na'?r(e[k]):e[k]);
 async function srvSearch(q){const x=await fetch(SB+'/rest/v1/rpc/bdbd_food_search',{method:'POST',headers:{...await sbh()},body:JSON.stringify({q,lim:60})});if(!x.ok)throw 0;return (await x.json()).map(toFood)}
 const CLOSE='<button data-a="close">닫기</button>',dg=()=>$('#dg');
 function openAdd(){Object.assign(D,{ed:null,top:0,q:'',cat:'전체',sel:null,mode:'s',meal:slotNow(),xi:0});dF();dg().showModal()}
@@ -343,11 +350,11 @@ function res(){const el=$('#res');if(!el)return;const q=D.q.trim(),A=allFoods(),
   if(my!=SQ||!$('#res'))return;const have=new Set(D.L.map(f=>f.n));D.L=D.L.concat(S.filter(f=>!have.has(f.n)));draw(D.L.length?'':'')},280)}
 function draw(tail){const el=$('#res');if(!el)return;
  el.innerHTML=(D.L.length?D.L.map((f,i)=>`<div class="it" data-a="fs" data-v="${i}"><div class="nm">${E(f.n)}<small>${E(f.cat||'')}</small></div><span class="mut">${r(f.k)}/100${f.bu||'g'}</span>${f.my?`<button class="ic x" data-a="fdel" data-v="${E(f.n)}" aria-label="내 음식에서 삭제">×</button>`:''}</div>`).join(''):(tail?'':'<p class="mut" style="padding:12px 0">결과가 없어요. 직접 입력으로 추가해 보세요.</p>'))+(tail||'')}
-function pv(){const f=D.sel,a=+$('#am').value||0,g=D.unit=='u'?a*f.g:a,m=g/100;$('#pvx').textContent=`${r(g)}g · ${r(f.k*m)} kcal`;$('#pvx').insertAdjacentHTML('beforeend',`<span class="mut" style="display:block;font-weight:400">탄 ${o1(f.c*m)} · 단 ${o1(f.p*m)} · 지 ${o1(f.f*m)}</span>`)}
+function pv(){const f=D.sel,a=+$('#am').value||0,g=D.unit=='u'?a*f.g:a,m=g/100;$('#pvx').textContent=`${r(g)}g · ${r(f.k*m)} kcal`;$('#pvx').insertAdjacentHTML('beforeend',`<span class="mut" style="display:block;font-weight:400">${(o=>NUT.map(([k,l,u])=>l.slice(0,1)+' '+nv(o,k)+(o[k]==null?'':u)).join(' · '))({est:f.est,c:mul(f.c,m),p:mul(f.p,m),f:mul(f.f,m),su:mul(f.su,m),na:mul(f.na,m,0)})}</span>${f.est?'<span class="mut" style="display:block;font-weight:400">≈ 원본에 없어 열량·포화지방으로 추정한 값</span>':''}`)}
 /* 기록 수정(우클릭·꾹 누르기): 음식은 양·단위·끼니, 운동은 시간·칼로리 */
 function openEdit(t,id){if(dg().open)return;const d=day(S.date),e=(t=='m'?d.m:d.x).find(x=>x.id==id);if(!e)return;D.ed=e;D.top=0;
  if(t=='x'){D.mode='xe';D.sel=null;dF();dg().showModal();return}
- const g=+e.g||0,m=g>0?100/g:0,F=allFoods().find(f=>f.n==e.n)||{},f={n:e.n,cat:e.cat,k:e.k*m,c:e.c*m,p:e.p*m,f:e.f*m,u:e.u||F.u||'',g:e.ug||F.g||0,bu:F.bu};
+ const g=+e.g||0,m=g>0?100/g:0,F=allFoods().find(f=>f.n==e.n)||{},f={n:e.n,cat:e.cat,k:e.k*m,c:mul(e.c,m,3),p:mul(e.p,m,3),f:mul(e.f,m,3),su:mul(e.su,m,3),na:mul(e.na,m,3),est:e.est,u:e.u||F.u||'',g:e.ug||F.g||0,bu:F.bu};
  D.mode='s';D.sel=f;D.meal=mealOf(e);const n=parseFloat(e.amt);if(f.u&&f.g&&String(e.amt).endsWith(f.u)&&n>0){D.unit='u';D.amt=n}else{D.unit='g';D.amt=g}dF();dg().showModal()}
 function pick(f){D.sel=f;D.unit=f.u&&f.g?'u':'g';D.amt=D.unit=='u'?1:100}
 function xp(){const i=D.xi,min=+$('#xm').value||0;D.xmin=min;if(i>=0){$('#xk').value=r(MET[i][1]*lastW(S.date)*min/60);$('#xh').textContent=`MET ${MET[i][1]} × 체중 ${lastW(S.date)}kg 기준 추정값이에요. 직접 고칠 수 있어요.`}else{$('#xk').value='';$('#xh').textContent='소모 칼로리를 직접 적어 주세요.'}}
@@ -367,9 +374,9 @@ const A={tab:v=>{S.tab=v;R();scrollTo(0,0)},dd:v=>{S.date=addD(S.date,+v);S.qe=0
  back:()=>{D.sel=null;D.mode='s';dF();$('#db').scrollTop=D.top||0},
  unit:v=>{if(v==D.unit)return;const f=D.sel,a=+$('#am').value||0;D.amt=v=='g'?r(a*f.g):o1(a/f.g)||1;D.unit=v;dF()},
  pv:v=>{D.amt=v;pv()},xp,xk:v=>{D.xi=+v;D.xmin=+$('#xm').value||30;dF()},ccat:(v,b)=>{b.parentNode.dataset.v=v;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b))},
- fadd(){const f=D.sel,a=+$('#am').value;if(!(a>0))return;const u=D.unit=='u',g=u?a*f.g:a,m=g/100,d=day(S.date),ne={id:Date.now(),meal:D.meal,n:f.n,cat:f.cat,u:f.u||undefined,ug:f.g||undefined,amt:u?a+f.u:r(g)+(f.bu||'g'),g:r(g),k:o1(f.k*m),c:o1(f.c*m),p:o1(f.p*m),f:o1(f.f*m)};
+ fadd(){const f=D.sel,a=+$('#am').value;if(!(a>0))return;const u=D.unit=='u',g=u?a*f.g:a,m=g/100,d=day(S.date),ne={id:Date.now(),meal:D.meal,n:f.n,cat:f.cat,u:f.u||undefined,ug:f.g||undefined,amt:u?a+f.u:r(g)+(f.bu||'g'),g:r(g),k:o1(f.k*m),c:mul(f.c,m),p:mul(f.p,m),f:mul(f.f,m),su:mul(f.su,m),na:mul(f.na,m,0),est:f.est||undefined};
   if(D.ed){const k=d.m.findIndex(x=>x.id==D.ed.id);if(k>=0)d.m[k]={...ne,id:D.ed.id};saveDay(S.date,d);D.ed=null;dg().close();R();toast('고쳤어요');return}
-  if(f.sid)st.set('sf',[f,...st.get('sf',[]).filter(x=>x.n!=f.n)].slice(0,300));
+  if(f.sid)st.set('sf2',[f,...st.get('sf2',[]).filter(x=>x.n!=f.n)].slice(0,300));
   d.m.push(ne);saveDay(S.date,d);
   st.set('rc',[f.n,...st.get('rc',[]).filter(n=>n!=f.n)].slice(0,15));dg().close();R();toast(`${MEALS[D.meal]}에 ${f.n} 추가`)},
  fsave(){const n=$('#cn').value.trim(),b=+$('#cg').value,k=+$('#ck').value;if(!n||!(b>0)||isNaN(k)||$('#ck').value===''){alert('이름, 기준량, 칼로리는 꼭 입력해 주세요.');return}
