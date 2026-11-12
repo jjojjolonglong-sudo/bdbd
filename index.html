@@ -5,6 +5,7 @@
 <script src="https://jjojjolonglong-sudo.github.io/mnmn/fonts.v1.js" data-app="bdbd"></script>
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="theme-color" content="#f6f7f4"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="bdbd">
 <script src="https://jjojjolonglong-sudo.github.io/mnmn/config.js"></script>
+<script src="https://jjojjolonglong-sudo.github.io/mnmn/core.v1.js" data-app="bdbd"></script>
 <style>
 /* 콘셉트: 가볍게 열고 바로 적기. 각진 모서리, 1px 가는 선, 연한 종이색 바탕, 초록 포인트 하나 */
 :root{--bg:#f6f7f4;--sf:#fff;--ink:#1e2622;--mut:#7c8780;--ln:#dde1dc;--ok:#1f7a54;--no:#c23b3b;--ac:#1f7a54;--nav:52px}
@@ -124,11 +125,11 @@ const lsG=k=>{try{return localStorage.getItem(PX+k)}catch(e){return null}},lsS=(
  lsKeys=()=>{const o=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(PX))o.push(k.slice(PX.length))}}catch(e){}return o},
  lsClear=()=>lsKeys().forEach(k=>{try{localStorage.removeItem(PX+k)}catch(e){}});
 /* 로그인 (다른 앱과 같은 방식: Supabase 이메일 로그인, 이 앱 전용 저장 키 bdbd_ses) */
-let SES=null;try{SES=JSON.parse(localStorage.getItem('bdbd_ses')||'null')}catch(e){}
-const saveSes=s=>{SES=s;try{s?localStorage.setItem('bdbd_ses',JSON.stringify(s)):localStorage.removeItem('bdbd_ses')}catch(e){}};
+let SES=null;try{SES=JSON.parse(localStorage.getItem('jjojjo_ses')||'null')}catch(e){}
+const saveSes=s=>{SES=s;try{s?localStorage.setItem('jjojjo_ses',JSON.stringify(s)):localStorage.removeItem('jjojjo_ses')}catch(e){}};
 async function gotrue(grant,body){const x=await fetch(`${SB}/auth/v1/token?grant_type=${grant}`,{method:'POST',headers:{apikey:ANON,'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await x.json().catch(()=>({}));if(!x.ok)throw new Error(j.error_description||j.msg||'로그인 실패');j.expires_at=Date.now()+j.expires_in*1000;return j}
 let rfp=null;
-async function token(){if(!SES)throw new Error('로그인이 필요해요');if(SES.expires_at-Date.now()<60000){rfp=rfp||gotrue('refresh_token',{refresh_token:SES.refresh_token}).then(saveSes).finally(()=>{rfp=null});await rfp}return SES.access_token}
+async function token(){try{SES=JSON.parse(localStorage.getItem('jjojjo_ses')||'null')}catch(e){}if(!SES)throw new Error('로그인이 필요해요');if(SES.expires_at-Date.now()<60000){rfp=rfp||gotrue('refresh_token',{refresh_token:SES.refresh_token}).then(saveSes).finally(()=>{rfp=null});await rfp}return SES.access_token}
 const sbh=async()=>({apikey:ANON,Authorization:'Bearer '+await token(),'Content-Type':'application/json'});
 const mem={},TS=(()=>{try{return JSON.parse(lsG('ts')||'{}')}catch(e){return{}}})(),Qm=new Map();let sync='idle',qt=null;
 const T=s=>Date.parse(s)||0,svTS=()=>lsS('ts',JSON.stringify(TS));
